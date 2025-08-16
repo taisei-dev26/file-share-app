@@ -6,8 +6,8 @@ export const files = sqliteTable("files", {
     .primaryKey()
     .$defaultFn(() => randomUUID()),
   fileName: text("fileName").notNull(),
-  filepath: text("filePath").notNull(),
+  filePath: text("filePath").notNull(),
   contentType: text("contentType").notNull(),
-  expiredAt: text("exporedAt").notNull(),
+  expiresAt: text("exporedAt").notNull(),
   createdAt: text("createdAt").notNull().$defaultFn(() => new Date().toISOString())
 });

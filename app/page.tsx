@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 
@@ -7,48 +7,51 @@ type UploadResult = {
   message?: string;
   url?: string;
   expiredAt?: string;
-}
+};
+
+type ExpirationOption = 1 | 3 | 5 | 7;
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
+  const [expiration, setExpiration] = useState<ExpirationOption>(7);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       const dropedFile = acceptedFiles[0];
-      setFile(dropedFile)
-      setFileName(dropedFile.name)
+      setFile(dropedFile);
+      setFileName(dropedFile.name);
     }
   }, []);
-  
+
   const handleUpload = async () => {
     if (!file) return;
-    setUploading(true)
+    setUploading(true);
 
     try {
       const formData = new FormData();
-      formData.append("file", file)
-      formData.append("expiration", "7")
+      formData.append("file", file);
+      formData.append("expiration", expiration.toString());
 
       const response = await fetch("/api/upload", {
         method: "POST",
-        body: formData
-      })
+        body: formData,
+      });
 
       if (!response.ok) {
         throw new Error(
           `Upload failed: ${response.status} ${response.statusText}`
-        )
+        );
       }
 
-      const result = (await response.json()) as UploadResult
-      setUploadResult(result)
+      const result = (await response.json()) as UploadResult;
+      setUploadResult(result);
 
       if (result.success) {
-        setFile(null)
-        setFileName("")
+        setFile(null);
+        setFileName("");
       }
     } catch (error) {
       setUploadResult({
@@ -59,9 +62,9 @@ export default function Home() {
             : "アップロード中にエラーが発生しました",
       });
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-  }
+  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -89,6 +92,22 @@ export default function Home() {
       {file && (
         <div>
           <p>ファイル名：{fileName}</p>
+          <div className="my-4">
+            <label className="block mb-2">
+              <select
+                value={expiration}
+                onChange={(e) =>
+                  setExpiration(Number(e.target.value) as ExpirationOption)
+                }
+                className="ml-2 p-1 border rounded"
+              >
+                <option value={1}>1日</option>
+                <option value={3}>3日</option>
+                <option value={5}>5日</option>
+                <option value={7}>7日</option>
+              </select>
+            </label>
+          </div>
           <button onClick={handleUpload} disabled={uploading}>
             {uploading ? "アップロード中..." : "アップロード"}
           </button>
@@ -98,11 +117,22 @@ export default function Home() {
       {uploadResult && uploadResult.success && uploadResult.url && (
         <div>
           <h3>共有URL：</h3>
-          <input type="text" readOnly value={uploadResult.url} onClick={(e) => (e.target as HTMLInputElement).select()} />
-          <button onClick={() => navigator.clipboard.writeText(uploadResult.url!)}>コピー</button>
+          <input
+            type="text"
+            readOnly
+            value={uploadResult.url}
+            onClick={(e) => (e.target as HTMLInputElement).select()}
+          />
+          <button
+            onClick={() => navigator.clipboard.writeText(uploadResult.url!)}
+          >
+            コピー
+          </button>
 
           {uploadResult.expiredAt && (
-            <p>有効期限： {new Date(uploadResult.expiredAt).toLocaleString()}</p>
+            <p>
+              有効期限： {new Date(uploadResult.expiredAt).toLocaleString()}
+            </p>
           )}
         </div>
       )}

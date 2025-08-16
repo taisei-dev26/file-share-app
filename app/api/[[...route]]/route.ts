@@ -1,5 +1,6 @@
 import { files } from "@/db/schema";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
@@ -29,6 +30,19 @@ app.post("/upload", async (c) => {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + Number(expirationDays));
 
+  try {
+    const r2 = (getCloudflareContext().env as any).R2 as unknown as R2Bucket;
+    await r2.put(filePath, file);
+  } catch (r2Error) {
+    return c.json(
+      {
+        success: false,
+        message: `File upload failed: ${r2Error}`,
+      },
+      500
+    );
+  }
+
   const db = drizzle(
     (getCloudflareContext().env as any).DB as unknown as D1Database
   );
@@ -47,7 +61,17 @@ app.post("/upload", async (c) => {
     );
   }
 
-  return c.json({ success: true, message: "ファイルを保存しました" });
+  const insertRecord = await db
+    .select()
+    .from(files)
+    .orderBy(desc(files.createdAt))
+    .limit(1);
+  return c.json({
+    success: true,
+    message: "ファイルを保存しました",
+    url: `${process.env.BASE_URL}/files/${insertRecord[0].id}`,
+    expiresAt: expiresAt.toISOString()
+  });
 });
 
 export const GET = handle(app);
